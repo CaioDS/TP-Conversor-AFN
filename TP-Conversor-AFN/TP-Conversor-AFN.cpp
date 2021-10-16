@@ -222,29 +222,45 @@ AFDState defineNextAFDState(stack<int> actuaState, vector<State> AFNautomaton, A
 		}
 		actuaState.pop();
 	}
-	/*stack<int> auxNewState = *auxState;
 
-	while (!auxNewState.empty()) {
+	stack<int> auxNewState = *auxState;
+	stack<int> aux1;
+	stack<int> aux2;
+
+	/*while (!auxNewState.empty()) {
 		int state = auxNewState.top();
 
 		for (int j = 0; j < AFNautomaton.size(); j++) {
 			State aux = AFNautomaton.at(j);
 			if (aux.id == state) {
-				nextState.transitions->push_back(searchAFDTransitions(*aux.transitions, A));
-				nextState.transitions->push_back(searchAFDTransitions(*aux.transitions, B));
+				stack<int>* a = searchAFDTransitions(*aux.transitions, A).to;
+				while (!a->empty()) {
+					aux1.push(a->top());
+					a->pop();
+				}
+
+				stack<int>* b = searchAFDTransitions(*aux.transitions, B).to;
+				while (!a->empty()) {
+					aux2.push(b->top());
+					b->pop();
+				}
 
 				break;
 			}
 		}
-		actuaState.states->pop();
+		auxNewState.pop();
 	}*/
 	                          
 	nextState.states = auxState;
+	//nextState.transitions->push_back(AFDTransition{ &aux1, A });
+	//nextState.transitions->push_back(AFDTransition{ &aux2, B });
+
 	for (int i = 0; i < nextState.transitions->size(); i++) {
 		AFDTransition transition = nextState.transitions->at(i);
 
 		if (!checkIfNewStateExists(*nextState.states, *AFDautomaton)) {
-			AFDautomaton->push_back(defineNextAFDState(*transition.to, AFNautomaton, B));
+			AFDautomaton->push_back(defineNextAFDState(*transition.to, AFNautomaton, alphabet));
+			//AFDautomaton->push_back(defineNextAFDState(*transition.to, AFNautomaton, alphabet));
 		}
 	}
 	
