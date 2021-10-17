@@ -43,36 +43,42 @@ typedef struct State {
 vector<State>* AFN_automaton;
 vector<AFDState>* AFDautomaton;
 
-void pushElements(stack<int> s1, stack<int> s2, int len)
+stack<int> sortStack(stack<int>& input)
 {
-	int i = 1;
-	while (i <= len) {
-		if (s1.size() > 0) {
-			s2.push(s1.top());
-			s1.pop();
+	stack<int> tmpStack;
+	while (!input.empty())
+	{
+		int tmp = input.top();
+		input.pop();
+
+		while (!tmpStack.empty() && tmpStack.top() > tmp)
+		{
+			input.push(tmpStack.top());
+			tmpStack.pop();
 		}
-		i++;
+		tmpStack.push(tmp);
 	}
+	return tmpStack;
 }
 
 bool compareStacks(stack<int> s1, stack<int> s2)
 {
-	int N = s1.size();
-	int M = s2.size();
+	stack<int> sortedStackS1 = sortStack(s1);
+	stack<int> sortedStackS2 = sortStack(s2);
+
+	int N = sortedStackS1.size();
+	int M = sortedStackS2.size();
 
 	if (N != M) {
 		return false;
 	}
 
 	for (int i = 1; i <= N; i++) {
-		pushElements(s1, s2, N - i);
-		int val = s1.top();
-		pushElements(s2, s1, 2 * (N - i));
-
-		if (val != s2.top())
+		if (sortedStackS1.top() != sortedStackS2.top())
 			return false;
 
-		pushElements(s1, s2, N - i);
+		sortedStackS1.pop();
+		sortedStackS2.pop();
 	}
 
 	return true;
@@ -90,28 +96,29 @@ bool checkIfNewStateExists(stack<int> state, vector<AFDState> AFDautomaton) {
 	return result;
 }
 
-int countNumberOfAFNStates(XMLDocument *automaton) {
+void createAutomaton(XMLDocument *automaton) {
+	AFN_automaton = new vector<State>;
 	int numberOfStates = 0;
 	for (XMLElement* listElement = automaton->FirstChildElement("structure")->FirstChildElement("automaton")->FirstChildElement("state");
 		listElement != NULL;
 		listElement = listElement->NextSiblingElement("state"))
 	{
-		numberOfStates++;
-	}
-	return numberOfStates;
-}
+		const char* stateId = listElement->FindAttribute("id")->Value();
+		int convertedStateId = atoi(stateId);
+		bool isInitial = false;
+		bool isFinal = false;
 
-void createAutomaton(int size) {
-	AFN_automaton = new vector<State>;
-	for (int i = 0; i < size; i++) {
-		bool initial = false;
-		if (i == 0) {
-			initial = true;
+		if (listElement->FirstChildElement("initial")) {
+			isInitial = true;
 		}
-		State state = State{
-			i, initial, false, new vector<Transition>
-		};
-		AFN_automaton->push_back(state);
+
+		if (listElement->FirstChildElement("final")) {
+			isFinal = true;
+		}
+
+		State* state = new State{ convertedStateId, isInitial, isFinal, new vector<Transition> };
+		
+		AFN_automaton->push_back(*state);
 	}
 }
 
@@ -143,14 +150,13 @@ void readXMLTransitions(XMLDocument* automaton) {
 
 void ReadXMLEntryPoint() {
 	XMLDocument afnEntryPoint;
-	XMLError errorResult = afnEntryPoint.LoadFile("AFNinput.xml");
+	XMLError errorResult = afnEntryPoint.LoadFile("AFNinput2.xml");
 
 	if (errorResult != XML_SUCCESS) {
 		throw new exception("Ocorreu uma falha ao processar o arquivo de entrada");
 	}
-	int statesSize = countNumberOfAFNStates(&afnEntryPoint);
 
-	createAutomaton(statesSize);
+	createAutomaton(&afnEntryPoint);
 	readXMLTransitions(&afnEntryPoint);
 }
 
@@ -194,19 +200,12 @@ AFDState defineAFDInitialState(vector<State> AFNautomaton) {
 	return initialState;
 }
 
-
-
-AFDState defineNextAFDState(stack<int> actuaState, vector<State> AFNautomaton, Alphabet alphabet) {
-	AFDState nextState = AFDState{
-		new stack<int>, new vector<AFDTransition>
-	};
-
+stack<int>* findNextAFDState(stack<int> actualState, vector<State> AFNautomaton, Alphabet alphabet) {
 	stack<int>* auxState = new stack<int>;
 
+	while (!actualState.empty()) {
+		int state = actualState.top();
 
-	while (!actuaState.empty()) {
-		int state = actuaState.top();
-		
 		for (int j = 0; j < AFNautomaton.size(); j++) {
 			State aux = AFNautomaton.at(j);
 			if (aux.id == state) {
@@ -220,84 +219,75 @@ AFDState defineNextAFDState(stack<int> actuaState, vector<State> AFNautomaton, A
 				break;
 			}
 		}
-		actuaState.pop();
+		actualState.pop();
 	}
 
-	stack<int> auxNewState = *auxState;
-	stack<int> aux1;
-	stack<int> aux2;
-
-	/*while (!auxNewState.empty()) {
-		int state = auxNewState.top();
-
-		for (int j = 0; j < AFNautomaton.size(); j++) {
-			State aux = AFNautomaton.at(j);
-			if (aux.id == state) {
-				stack<int>* a = searchAFDTransitions(*aux.transitions, A).to;
-				while (!a->empty()) {
-					aux1.push(a->top());
-					a->pop();
-				}
-
-				stack<int>* b = searchAFDTransitions(*aux.transitions, B).to;
-				while (!a->empty()) {
-					aux2.push(b->top());
-					b->pop();
-				}
-
-				break;
-			}
-		}
-		auxNewState.pop();
-	}*/
-	                          
-	nextState.states = auxState;
-	//nextState.transitions->push_back(AFDTransition{ &aux1, A });
-	//nextState.transitions->push_back(AFDTransition{ &aux2, B });
-
-	for (int i = 0; i < nextState.transitions->size(); i++) {
-		AFDTransition transition = nextState.transitions->at(i);
-
-		if (!checkIfNewStateExists(*nextState.states, *AFDautomaton)) {
-			AFDautomaton->push_back(defineNextAFDState(*transition.to, AFNautomaton, alphabet));
-			//AFDautomaton->push_back(defineNextAFDState(*transition.to, AFNautomaton, alphabet));
-		}
-	}
-	
-
-	return nextState;
-
+	return auxState;
 }
 
-vector<AFDState> convertAfnToAfd(vector<State> AFNautomaton) {
+void defineNextAFDState(stack<int> actualState, vector<State> AFNautomaton, vector<AFDState> *afd) {
+	AFDState nextState = AFDState{
+		new stack<int>, new vector<AFDTransition>
+	};
+
+	if (!checkIfNewStateExists(actualState, *AFDautomaton)) {
+		*nextState.states = actualState;
+		nextState.transitions->push_back(AFDTransition{ findNextAFDState(actualState, AFNautomaton, A), A });
+		nextState.transitions->push_back(AFDTransition{ findNextAFDState(actualState, AFNautomaton, B), B });
+
+		afd->push_back(nextState);
+
+		for (int i = nextState.transitions->size() - 1; i >= 0; i--) {
+			AFDTransition transition = nextState.transitions->at(i);
+
+			defineNextAFDState(*transition.to, AFNautomaton, afd);
+		}
+	}
+}
+
+void convertAfnToAfd(vector<State> AFNautomaton) {
 	AFDautomaton = new vector<AFDState>;
 
 	AFDState initialState = defineAFDInitialState(AFNautomaton);
 	AFDautomaton->push_back(initialState);
 
+	vector<AFDState>* AFD = new vector<AFDState>;
+
 	for (int i = 0; i < initialState.transitions->size(); i++) {
 		AFDTransition transition = initialState.transitions->at(i);
 
-		AFDState nextState = defineNextAFDState(*transition.to, AFNautomaton, A);
-		if (!checkIfNewStateExists(*nextState.states, *AFDautomaton)) {
-			AFDautomaton->push_back(nextState);
-		}
+		defineNextAFDState(*transition.to, AFNautomaton, AFDautomaton);
+	}
+}
 
-		AFDState nextState2 = defineNextAFDState(*transition.to, AFNautomaton, B);
-		if (!checkIfNewStateExists(*nextState2.states, *AFDautomaton)) {
-			AFDautomaton->push_back(nextState2);
+void defineFinalAFDState() {
+	int finalStateId;
+	for (int i = 0; i < AFN_automaton->size(); i++) {
+		State state = AFN_automaton->at(i);
+
+		if (state.final) {
+			for (int i = 0; i < AFDautomaton->size(); i++) {
+				AFDState afdState = AFDautomaton->at(i);
+				stack<int> aux = *afdState.states;
+				while (!aux.empty()) {
+					if (aux.top() == state.id) {
+						afdState.final = true;
+					}
+					aux.pop();
+				}
+				AFDautomaton->at(i) = afdState;
+			}
 		}
 	}
-
-	return *AFDautomaton;
-
 }
+
 int main()
 {
 	try
 	{
 		ReadXMLEntryPoint();
 		convertAfnToAfd(*AFN_automaton);
+		defineFinalAFDState();
 		return 0;
 	}
 	catch (const exception x)
