@@ -5,6 +5,7 @@
 #include "tinyxml2.h"
 #include <vector>
 #include <stack>
+#include<string>
 
 using namespace tinyxml2;
 using namespace std;
@@ -27,6 +28,7 @@ typedef struct AFDTransition {
 } AFNTransition;
 
 typedef struct AFDState {
+	int* id;
 	stack<int>* states;
 	vector<AFDTransition> *transitions;
 	bool initial;
@@ -150,7 +152,7 @@ void readXMLTransitions(XMLDocument* automaton) {
 
 void ReadXMLEntryPoint() {
 	XMLDocument afnEntryPoint;
-	XMLError errorResult = afnEntryPoint.LoadFile("AFNinput2.xml");
+	XMLError errorResult = afnEntryPoint.LoadFile("AFNinput.jff");
 
 	if (errorResult != XML_SUCCESS) {
 		throw new exception("Ocorreu uma falha ao processar o arquivo de entrada");
@@ -178,7 +180,7 @@ AFDTransition searchAFDTransitions(vector<Transition> transitions, Alphabet alph
 
 AFDState defineAFDInitialState(vector<State> AFNautomaton) {
 	AFDState initialState = AFDState{
-				new stack<int>, new vector<AFDTransition>
+				new int, new stack<int>, new vector<AFDTransition>
 	};
 
 	for (int i = 0; i < AFNautomaton.size(); i++) {
@@ -227,7 +229,7 @@ stack<int>* findNextAFDState(stack<int> actualState, vector<State> AFNautomaton,
 
 void defineNextAFDState(stack<int> actualState, vector<State> AFNautomaton, vector<AFDState> *afd) {
 	AFDState nextState = AFDState{
-		new stack<int>, new vector<AFDTransition>
+		new int, new stack<int>, new vector<AFDTransition>
 	};
 
 	if (!checkIfNewStateExists(actualState, *AFDautomaton)) {
@@ -275,25 +277,116 @@ void defineFinalAFDState() {
 					}
 					aux.pop();
 				}
+				*afdState.id = i;
 				AFDautomaton->at(i) = afdState;
 			}
 		}
 	}
 }
 
+//função que gera o arquivo de saída XML
+void generateXMLOutputAFD() {
+	XMLDocument document;
+	XMLDeclaration* declaration = document.NewDeclaration();
+
+	XMLElement* structureElement = document.NewElement("structure");
+
+	XMLElement* typeElement = document.NewElement("type");
+	XMLText* typeTextElement = document.NewText("fa");
+	typeElement->InsertEndChild(typeTextElement);
+	structureElement->InsertEndChild(typeElement);
+
+	XMLElement* automatonElement = document.NewElement("automaton");
+
+	for (int i = 0; i < AFDautomaton->size(); i++) {
+		AFDState state = AFDautomaton->at(i);
+		stack<int> aux = *state.states;
+
+		XMLElement* stateElement = document.NewElement("state");
+		string idTex = to_string(*state.id);
+		stateElement->SetAttribute("id", idTex.c_str());
+
+		string nameText = "";
+		while (!aux.empty()) {
+			nameText = nameText + to_string(aux.top()) + " ";
+			aux.pop();
+		}
+		stateElement->SetAttribute("name", nameText.c_str());
+
+		XMLElement* xElement = document.NewElement("x");
+		XMLElement* yElement = document.NewElement("y");
+		XMLText* coordinateXElement = document.NewText("70.0");
+		XMLText* coordinateYElement = document.NewText("70.0");
+		xElement->InsertEndChild(coordinateXElement);
+		yElement->InsertEndChild(coordinateYElement);
+		stateElement->InsertEndChild(xElement);
+		stateElement->InsertEndChild(yElement);
+
+		if (state.initial) {
+			XMLElement* intitalElement = document.NewElement("initial");
+			stateElement->InsertEndChild(intitalElement);
+		}
+
+		if (state.final) {
+			XMLElement* finalElement = document.NewElement("final");
+			stateElement->InsertEndChild(finalElement);
+		}
+
+		automatonElement->InsertEndChild(stateElement);
+	}
+
+	/*for (int i = 0; i < AFDautomaton->size(); i++) {
+		AFDState state = AFDautomaton->at(i);
+		vector<AFDTransition> transitions = *state.transitions;
+
+		XMLElement* transitionElement = document.NewElement("transition");
+
+		for (int t = 0; t < transitions.size(); t++) {
+			AFDTransition transition = transitions.at(i);
+
+			for (int j = 0; j < AFDautomaton->size() - 3; j++) {
+				AFDState compareState = AFDautomaton->at(j);
+				if (compareStacks(*transition.to, *compareState.states)) {
+					XMLElement* fromElement = document.NewElement("from");
+					XMLText* fromElementText = document.NewText(to_string(*state.id).c_str());
+
+					XMLElement* toElement = document.NewElement("to");
+					XMLText* toElementText = document.NewText(to_string(*compareState.id).c_str());
+
+					XMLElement* readElement = document.NewElement("read");
+					XMLText* readElementText = document.NewText(to_string(transition.read).c_str());
+
+					transitionElement->InsertEndChild(fromElement);
+					transitionElement->InsertEndChild(toElement);
+					transitionElement->InsertEndChild(readElement);
+
+					break;
+				}
+			}
+		}
+
+		automatonElement->InsertEndChild(transitionElement);
+	}*/
+
+	structureElement->InsertEndChild(automatonElement);
+
+	document.InsertEndChild(structureElement);
+	document.InsertFirstChild(declaration);
+
+	XMLPrinter printer;
+	document.Print();
+	document.SaveFile("AFDConvertedOutput.jff");
+
+	cout << "\n \n Arquivo AFD convertido gerado com sucesso em 'AFDConvertedOutput.jff'";
+}
+
 int main()
 {
-	try
-	{
 		ReadXMLEntryPoint();
 		convertAfnToAfd(*AFN_automaton);
 		defineFinalAFDState();
+		generateXMLOutputAFD();
 		return 0;
-	}
-	catch (const exception x)
-	{
-		cout << "ERRO";
-		return 0;
-	}
+
 
 }
