@@ -335,38 +335,42 @@ void generateXMLOutputAFD() {
 		automatonElement->InsertEndChild(stateElement);
 	}
 
-	/*for (int i = 0; i < AFDautomaton->size(); i++) {
+	for (int i = 0; i < AFDautomaton->size(); i++) {
 		AFDState state = AFDautomaton->at(i);
 		vector<AFDTransition> transitions = *state.transitions;
 
-		XMLElement* transitionElement = document.NewElement("transition");
-
 		for (int t = 0; t < transitions.size(); t++) {
-			AFDTransition transition = transitions.at(i);
+			AFDTransition transition = transitions.at(t);
 
-			for (int j = 0; j < AFDautomaton->size() - 3; j++) {
+			for (int j = 0; j < AFDautomaton->size(); j++) {
 				AFDState compareState = AFDautomaton->at(j);
+
 				if (compareStacks(*transition.to, *compareState.states)) {
+					XMLElement* transitionElement = document.NewElement("transition");
+
 					XMLElement* fromElement = document.NewElement("from");
 					XMLText* fromElementText = document.NewText(to_string(*state.id).c_str());
+					fromElement->InsertEndChild(fromElementText);
 
 					XMLElement* toElement = document.NewElement("to");
 					XMLText* toElementText = document.NewText(to_string(*compareState.id).c_str());
+					toElement->InsertEndChild(toElementText);
 
 					XMLElement* readElement = document.NewElement("read");
 					XMLText* readElementText = document.NewText(to_string(transition.read).c_str());
+					readElement->InsertEndChild(readElementText);
 
 					transitionElement->InsertEndChild(fromElement);
 					transitionElement->InsertEndChild(toElement);
 					transitionElement->InsertEndChild(readElement);
 
+					automatonElement->InsertEndChild(transitionElement);
+
 					break;
 				}
 			}
 		}
-
-		automatonElement->InsertEndChild(transitionElement);
-	}*/
+	}
 
 	structureElement->InsertEndChild(automatonElement);
 
