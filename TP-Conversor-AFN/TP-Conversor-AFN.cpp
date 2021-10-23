@@ -98,6 +98,7 @@ bool checkIfNewStateExists(stack<int> state, vector<AFDState> AFDautomaton) {
 	return result;
 }
 
+//FUNÇÃO RESPONSÁVEL POR CRIAR O AUTOMATO
 void createAutomaton(XMLDocument *automaton) {
 	AFN_automaton = new vector<State>;
 	int numberOfStates = 0;
@@ -124,6 +125,7 @@ void createAutomaton(XMLDocument *automaton) {
 	}
 }
 
+//FUNCÃO RESPONSÁVEL POR ADICIONAR A TRANSIÇÃO LIDA DO ARQUIVO NA ESTRUTURA AFN
 void addTransition(int from, int to, int read) {
 	State aux = AFN_automaton->at(from);
 	Transition transition = Transition{
@@ -133,6 +135,7 @@ void addTransition(int from, int to, int read) {
 	aux.transitions->push_back(transition);
 }
 
+//FUNCÃO RESPONSÁVEL POR LER AS TRANSIÇÕES NO ARQUIVO JFF (JFLAP) DE ENTRADA AFN
 void readXMLTransitions(XMLDocument* automaton) {
 	for (XMLElement* listElement = automaton->FirstChildElement("structure")->FirstChildElement("automaton")->FirstChildElement("transition");
 		listElement != NULL;
@@ -150,9 +153,10 @@ void readXMLTransitions(XMLDocument* automaton) {
 	}
 }
 
+//FUNCÃO RESPONSÁVEL POR LER O ARQUIVO JFF (JFLAP) DE ENTRADA AFN
 void ReadXMLEntryPoint() {
 	XMLDocument afnEntryPoint;
-	XMLError errorResult = afnEntryPoint.LoadFile("AFNinput.jff");
+	XMLError errorResult = afnEntryPoint.LoadFile("dados/AFNinput.jff");
 
 	if (errorResult != XML_SUCCESS) {
 		throw new exception("Ocorreu uma falha ao processar o arquivo de entrada");
@@ -162,6 +166,7 @@ void ReadXMLEntryPoint() {
 	readXMLTransitions(&afnEntryPoint);
 }
 
+//FUNÇÃO REPONSÁVEL POR BUSCAR TRANSIÇÕES NO AFD
 AFDTransition searchAFDTransitions(vector<Transition> transitions, Alphabet alphabet) {
 	stack<int>* stackTransitions = new stack<int>;
 
@@ -178,6 +183,7 @@ AFDTransition searchAFDTransitions(vector<Transition> transitions, Alphabet alph
 	};
 }
 
+//FUNÇÃO RESPONSÁVEL POR DEFINIR O ESTADO INICIAL DO AFD CONVERTIDO
 AFDState defineAFDInitialState(vector<State> AFNautomaton) {
 	AFDState initialState = AFDState{
 				new int, new stack<int>, new vector<AFDTransition>
@@ -202,6 +208,7 @@ AFDState defineAFDInitialState(vector<State> AFNautomaton) {
 	return initialState;
 }
 
+//FUNÇÃO RESPONSÁVEL POR BUSCAR O PRÓXIMO ESTADO A SER ANALISADO NA CONVERSÃO
 stack<int>* findNextAFDState(stack<int> actualState, vector<State> AFNautomaton, Alphabet alphabet) {
 	stack<int>* auxState = new stack<int>;
 
@@ -227,6 +234,7 @@ stack<int>* findNextAFDState(stack<int> actualState, vector<State> AFNautomaton,
 	return auxState;
 }
 
+//FUNÇÃO RESPONSÁVEL POR DETERMINAR O PRÓXIMO ESTADO
 void defineNextAFDState(stack<int> actualState, vector<State> AFNautomaton, vector<AFDState> *afd) {
 	AFDState nextState = AFDState{
 		new int, new stack<int>, new vector<AFDTransition>
@@ -247,6 +255,7 @@ void defineNextAFDState(stack<int> actualState, vector<State> AFNautomaton, vect
 	}
 }
 
+//FUNÇÃO INCIAL DA CONVERSÃO
 void convertAfnToAfd(vector<State> AFNautomaton) {
 	AFDautomaton = new vector<AFDState>;
 
@@ -262,6 +271,7 @@ void convertAfnToAfd(vector<State> AFNautomaton) {
 	}
 }
 
+//FUNÇÃO RESPOSNSÁVEL POR DEFINIR O ESTADOS DE ACEITAÇÃO DO AFD CONVERTIDO
 void defineFinalAFDState() {
 	int finalStateId;
 	for (int i = 0; i < AFN_automaton->size(); i++) {
@@ -284,7 +294,7 @@ void defineFinalAFDState() {
 	}
 }
 
-//função que gera o arquivo de saída XML
+//FUNÇÃO RESPONSÁVEL POR GERAR A SAÍDA DO AFD
 void generateXMLOutputAFD() {
 	XMLDocument document;
 	XMLDeclaration* declaration = document.NewDeclaration();
@@ -377,20 +387,31 @@ void generateXMLOutputAFD() {
 	document.InsertEndChild(structureElement);
 	document.InsertFirstChild(declaration);
 
-	XMLPrinter printer;
-	document.Print();
-	document.SaveFile("AFDConvertedOutput.jff");
+	document.SaveFile("dados/AFDConvertedOutput.jff");
 
-	cout << "\n \n Arquivo AFD convertido gerado com sucesso em 'AFDConvertedOutput.jff'";
+	cout << "\n \n Arquivo AFD convertido gerado com SUCESSO em 'AFDConvertedOutput.jff' \n \n \n";
 }
 
 int main()
 {
-		ReadXMLEntryPoint();
-		convertAfnToAfd(*AFN_automaton);
-		defineFinalAFDState();
-		generateXMLOutputAFD();
-		return 0;
+	cout << "\n*********************** Conversor AFN -> AFD **************************\n \n";
+	cout << "Para utilizar corretamente siga as Instruções: \n";
+	cout << "1 - Deve ser adicionado a pasta dados o AFN de entrada (.jff) gerado a partir do Jflap, com o seguinte nome 'AFNinput.jff'. (Já existe um de exemplo na pasta)  \n";
+	cout << "2 - Após o algoritmo ler o AFN e realizar a conversão, irá ser gerado um novo arquivo (.jff) com os dados do AFD com este nome: 'AFDConvertedOutput.jff' \n \n";
+
+	cout << "Iniciando conversão... \n";
+
+	ReadXMLEntryPoint();
+
+	cout << "AFN de Entrada lido com sucesso... \n";
+	convertAfnToAfd(*AFN_automaton);
+	defineFinalAFDState();
+
+	cout << "Conversão realizada com sucesso... \n";
+	cout << "Gerando Arquivo AFD... \n";
+	generateXMLOutputAFD();
+
+	return 0;
 
 
 }
